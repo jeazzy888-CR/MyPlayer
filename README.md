@@ -103,7 +103,3 @@ scripts/                  сборка релизов
 - **Звук.** Декодирование делает Windows (Media Foundation), поэтому в сборке нет собственных кодеков.
 
 **Технологии:** .NET 8, WPF, MVVM, [TagLibSharp](https://github.com/mono/taglib-sharp), System.Text.Json, WiX Toolset 5, GitHub Actions.
-
-## Лицензия
-
-Лицензия пока не выбрана. Добавьте файл `LICENSE` (например, MIT), когда определитесь с условиями распространения.
