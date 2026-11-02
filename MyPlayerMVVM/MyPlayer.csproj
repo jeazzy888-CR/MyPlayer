@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 10.0.19041 — набор Windows API (WinRT) для системных медиа-элементов; запускается и на Windows 10 1809+ -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MyPlayer_NET9</RootNamespace>
+    <AssemblyName>MyPlayer</AssemblyName>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Версия релиза: меняется только здесь (скрипт сборки, MSI и GitHub берут её отсюда) -->
+    <Version>1.4.5</Version>
+    <AssemblyTitle>MyPlayer</AssemblyTitle>
+    <Product>MyPlayer</Product>
+    <Company>MyPlayer</Company>
+    <Copyright>Copyright © 2026 MyPlayer</Copyright>
+    <Description>Музыкальный плеер MyPlayer</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Чтение ID3-тегов mp3 (название, исполнитель, реальная длительность) -->
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+
+  <!--
+    Портативная сборка: dotnet publish -c Release -p:Portable=true
+    Кладёт рядом с MyPlayer.exe файл portable.flag — по нему плеер хранит данные в папке Data рядом с программой
+    (см. Services/Persistence/AppPaths.cs). Обычная сборка/MSI маркера не получает и хранит данные в %AppData%\MyPlayer.
+  -->
+  <Target Name="WritePortableMarker" AfterTargets="Publish" Condition="'$(Portable)' == 'true'">
+    <WriteLinesToFile File="$(PublishDir)portable.flag" Lines="MyPlayer portable mode: data is stored in the Data folder next to the program." Overwrite="true" />
+  </Target>
+
+</Project>

@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:     # ручной запуск со вкладки Actions (без выпуска релиза — только сборка)
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build portable + MSI
+        shell: pwsh
+        run: ./scripts/build-release.ps1
+
+      # Журналы и готовые файлы сохраняются всегда — даже если сборка упала, видно почему
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build/*.log
+          if-no-files-found: ignore
+
+      - name: Upload release files
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: artifacts/*
+
+      # Релиз создаётся только по метке v*; если какого-то файла нет — сборка честно падает, а не выпускает пустой релиз
+      - name: Publish GitHub Release
+        if: success() && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          fail_on_unmatched_files: true

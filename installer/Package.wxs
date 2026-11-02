@@ -1,0 +1,81 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- UpgradeCode НЕ МЕНЯТЬ между версиями: по нему Windows понимает, что это обновление того же приложения -->
+  <Package Name="MyPlayer" Manufacturer="MyPlayer" Version="$(ProductVersion)"
+           UpgradeCode="7B5A3AF2-71E8-40D6-8140-3EA7B6CF4C4E" Scope="perMachine" Language="1049">
+
+    <MajorUpgrade DowngradeErrorMessage="Установлена более новая версия MyPlayer." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="MyPlayer" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="Main" Directory="INSTALLFOLDER">
+      <Files Include="$(AppDir)\**" />
+    </ComponentGroup>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="3C2D9B4E-5A1F-4E7B-8D63-9F0A1B2C3D4E">
+        <Shortcut Id="MyPlayerShortcut" Name="MyPlayer" Target="[INSTALLFOLDER]MyPlayer.exe"
+                  WorkingDirectory="INSTALLFOLDER">
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="MyPlayer.Desktop" />
+        </Shortcut>
+        <RegistryValue Root="HKCU" Key="Software\MyPlayer" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+
+    <?ifdef WithAssoc?>
+    <!-- Ассоциации: MyPlayer появляется в «Открыть с помощью» и в «Приложения по умолчанию» для аудиоформатов -->
+    <ComponentGroup Id="FileAssociations" Directory="INSTALLFOLDER">
+      <Component Id="FileAssoc" Guid="934D69C9-0125-465B-B8DE-3748E2AA9403">
+        <RegistryKey Root="HKLM" Key="Software\Classes\MyPlayer.AudioFile">
+          <RegistryValue Type="string" Value="Аудиофайл MyPlayer" KeyPath="yes" />
+          <RegistryValue Key="DefaultIcon" Type="string" Value="[INSTALLFOLDER]MyPlayer.exe,0" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]MyPlayer.exe&quot; &quot;%1&quot;" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\Applications\MyPlayer.exe\shell\open\command">
+          <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]MyPlayer.exe&quot; &quot;%1&quot;" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.mp3\OpenWithProgids">
+          <RegistryValue Name="MyPlayer.AudioFile" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.flac\OpenWithProgids">
+          <RegistryValue Name="MyPlayer.AudioFile" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.m4a\OpenWithProgids">
+          <RegistryValue Name="MyPlayer.AudioFile" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.aac\OpenWithProgids">
+          <RegistryValue Name="MyPlayer.AudioFile" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.wav\OpenWithProgids">
+          <RegistryValue Name="MyPlayer.AudioFile" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.wma\OpenWithProgids">
+          <RegistryValue Name="MyPlayer.AudioFile" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\MyPlayer\Capabilities">
+          <RegistryValue Name="ApplicationName" Type="string" Value="MyPlayer" />
+          <RegistryValue Name="ApplicationDescription" Type="string" Value="Музыкальный плеер MyPlayer" />
+          <RegistryValue Key="FileAssociations" Name=".mp3" Type="string" Value="MyPlayer.AudioFile" />
+          <RegistryValue Key="FileAssociations" Name=".flac" Type="string" Value="MyPlayer.AudioFile" />
+          <RegistryValue Key="FileAssociations" Name=".m4a" Type="string" Value="MyPlayer.AudioFile" />
+          <RegistryValue Key="FileAssociations" Name=".aac" Type="string" Value="MyPlayer.AudioFile" />
+          <RegistryValue Key="FileAssociations" Name=".wav" Type="string" Value="MyPlayer.AudioFile" />
+          <RegistryValue Key="FileAssociations" Name=".wma" Type="string" Value="MyPlayer.AudioFile" />
+        </RegistryKey>
+        <RegistryValue Root="HKLM" Key="Software\RegisteredApplications" Name="MyPlayer" Type="string" Value="Software\MyPlayer\Capabilities" />
+      </Component>
+    </ComponentGroup>
+    <?endif?>
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="Main" />
+      <?ifdef WithAssoc?>
+      <ComponentGroupRef Id="FileAssociations" />
+      <?endif?>
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>

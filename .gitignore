@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+*.user
+artifacts/
+build/
+installer/bin/
+installer/obj/

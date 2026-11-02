@@ -1,0 +1,2332 @@
+<Window x:Class="MyPlayer_NET9.Views.MainWindow"
+        x:Name="RootWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MyPlayer_NET9.ViewModels"
+        xmlns:conv="clr-namespace:MyPlayer_NET9.Converters"
+        xmlns:behaviors="clr-namespace:MyPlayer_NET9.Behaviors"
+        xmlns:controls="clr-namespace:MyPlayer_NET9.Controls"
+        xmlns:models="clr-namespace:MyPlayer_NET9.Models"
+        xmlns:views="clr-namespace:MyPlayer_NET9.Views"
+        Title="MyPlayer" Height="720" Width="1280"
+        MinHeight="560" MinWidth="960"
+        WindowStartupLocation="CenterScreen"
+        Background="Transparent"
+        WindowStyle="None"
+        ResizeMode="CanResizeWithGrip"
+        AllowsTransparency="True">
+
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.InputBindings>
+        <!-- F2 в редакторе плейлиста: взять обложку у первого добавленного трека -->
+        <KeyBinding Key="F2" Command="{Binding Playlists.UseFirstTrackCoverCommand}"/>
+    </Window.InputBindings>
+
+    <Window.Resources>
+
+        <conv:EnumToVisibilityConverter x:Key="EnumToVisibility"/>
+        <conv:EnumInSetConverter x:Key="EnumInSet"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVisibility"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+
+        <!-- ===================== ЦВЕТА ===================== -->
+        <SolidColorBrush x:Key="SidebarBg" Color="#FF141414"/>
+        <SolidColorBrush x:Key="MainBg" Color="#FF0A0A0A"/>
+        <SolidColorBrush x:Key="AccentOrange" Color="#FFE86C2C"/>
+        <SolidColorBrush x:Key="AccentOrangeLight" Color="#26E86C2C"/>
+        <SolidColorBrush x:Key="TextWhite" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="TextGray" Color="#FFB8B8B8"/>
+        <SolidColorBrush x:Key="TextGrayDim" Color="#FF7A7A7A"/>
+        <SolidColorBrush x:Key="RowHoverBg" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="PanelBg" Color="#FF1C1C1C"/>
+        <SolidColorBrush x:Key="OverlayBg" Color="#B3000000"/>
+        <SolidColorBrush x:Key="BorderSoft" Color="#1FFFFFFF"/>
+        <!-- Зелёный — тот же приём, что у оранжевого выделения, только другой цвет (строка "выбери трек") -->
+        <SolidColorBrush x:Key="AccentGreen" Color="#FF3FD17A"/>
+        <SolidColorBrush x:Key="AccentGreenLight" Color="#263FD17A"/>
+        <SolidColorBrush x:Key="AccentGreenHover" Color="#403FD17A"/>
+
+        <BlurEffect x:Key="MainBlur" Radius="14" KernelType="Gaussian"/>
+
+        <!-- Единая шкала радиусов, чтобы всё выглядело согласованно -->
+        <CornerRadius x:Key="RadiusLarge">20</CornerRadius>
+        <CornerRadius x:Key="RadiusMedium">14</CornerRadius>
+        <CornerRadius x:Key="RadiusSmall">10</CornerRadius>
+        <CornerRadius x:Key="RadiusPill">17</CornerRadius>
+
+        <!-- ===================== АНИМАЦИИ ПОПАПОВ ===================== -->
+        <Storyboard x:Key="PopupFadeIn">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                              From="0" To="1" Duration="0:0:0.16"/>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                              From="0.94" To="1" Duration="0:0:0.16">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- ===================== СТИЛЬ КНОПКИ БОКОВОЙ ПАНЕЛИ ===================== -->
+        <Style x:Key="SidebarButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <!-- Рамка 1 px всегда есть (прозрачная), чтобы кнопка не «прыгала» при выборе вкладки -->
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="1"
+                                BorderBrush="Transparent"
+                                CornerRadius="{StaticResource RadiusSmall}"
+                                Margin="12,3,12,3">
+                            <StackPanel Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="13,0,0,0">
+                                <TextBlock Text="{TemplateBinding Tag}"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="17"
+                                           Margin="0,0,14,0"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="{TemplateBinding Content}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Наведение: заливка и оранжевый текст -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="Bd"
+                                                             Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                             To="#14FFFFFF" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="Bd"
+                                                             Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                             To="Transparent" Duration="0:0:0.18"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+
+                            <!-- Открытая вкладка: название и значок оранжевые (больше ничего) -->
+                            <Trigger Property="behaviors:NavButton.IsActive" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <!-- Полный экран: кнопки сайдбара крупнее в 1.25 раза (текст, иконка и высота вместе) -->
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, ElementName=RootWindow}" Value="Maximized">
+                    <Setter Property="LayoutTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="1.25" ScaleY="1.25"/>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ===================== СТИЛЬ ХАОС-КНОПКИ ===================== -->
+        <Style x:Key="ChaosButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentOrangeLight}"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="BorderThickness" Value="1.4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Width" Value="90"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource RadiusPill}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentOrange}"/>
+                                <Setter Property="Foreground" Value="Black"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== КНОПКА-ШЕСТЕРЁНКА ===================== -->
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource RadiusPill}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== ПУНКТ МЕНЮ (настройки/сортировка) ===================== -->
+        <Style x:Key="MenuItemButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource RadiusSmall}"
+                                Margin="2">
+                            <ContentPresenter HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"
+                                              Margin="16,0,16,0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentOrangeLight}"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Радио-подобный пункт меню (для выбора режима Хаоса) с индикатором активности -->
+        <Style x:Key="ChaosOptionButtonStyle" TargetType="Button" BasedOn="{StaticResource MenuItemButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ===================== СТИЛЬ ЭЛЕМЕНТА СПИСКА ===================== -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource RadiusSmall}"
+                                Margin="8,2,8,2">
+                            <ContentPresenter Margin="12,0,12,0"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Hover не показываем после прокрутки, пока курсор по-настоящему не двигали: строки скользят под неподвижным курсором,
+                                 и подсветка иначе прыгает со строки на строку (IsHoverSuppressed ставит SmoothScrollBehavior) -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="behaviors:SmoothScrollBehavior.IsHoverSuppressed" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource RowHoverBg}"/>
+                            </MultiTrigger>
+                            <!-- Играющий трек: подсветка привязана к самому треку (Track.IsCurrent), а не к IsSelected
+                                 ListBox — выделение не зависит от переиспользования контейнеров при прокрутке -->
+                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentOrangeLight}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentOrange}"/>
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="1"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== КАРТОЧКА АЛЬБОМА ===================== -->
+        <Style x:Key="AlbumCardStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                CornerRadius="{StaticResource RadiusMedium}"
+                                Padding="8,8,8,10">
+                            <StackPanel>
+                                <!-- Обложка занимает всю ширину карточки и остаётся квадратной
+                                     (высота = собственная ширина), подписи ниже ровно под ней -->
+                                <controls:SquareGrid>
+                                    <!-- Обложка (или серая заглушка, если её нет в тегах) -->
+                                    <Border CornerRadius="{StaticResource RadiusSmall}" ClipToBounds="True">
+                                        <Grid>
+                                            <Border Background="#FF2A2A2A"/>
+                                            <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                                            <TextBlock Text="&#xE8D6;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="46"
+                                                       Foreground="#FF4A4A4A"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="{Binding Cover, Converter={StaticResource NullToVisibility}}"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Круглая кнопка Play/Pause — появляется в углу обложки при наведении -->
+                                    <Button x:Name="PlayOverlay"
+                                            Width="34" Height="34"
+                                            Padding="0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="10"
+                                            Cursor="Hand"
+                                            BorderThickness="0"
+                                            Opacity="0"
+                                            Command="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border CornerRadius="17" Background="{StaticResource AccentOrange}">
+                                                    <TextBlock Text="{Binding PlayPauseGlyph}"
+                                                               FontFamily="Segoe MDL2 Assets"
+                                                               FontSize="12"
+                                                               Foreground="Black"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </controls:SquareGrid>
+
+                                <TextBlock Text="{Binding Title}"
+                                           Foreground="White" FontSize="14" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,8,0,0"/>
+                                <!-- Пустой исполнитель (у плейлистов) — подпись скрыта, карточка остаётся той же -->
+                                <TextBlock Text="{Binding Artist}"
+                                           Foreground="{StaticResource TextGray}" FontSize="12"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,1,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Artist}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                                <Setter TargetName="PlayOverlay" Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== ПОИСК ===================== -->
+        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#0DFFFFFF"/>
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="CaretBrush" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="{StaticResource RadiusPill}">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Слайдер громкости / прогресса — тонкий, спокойный -->
+        <Style x:Key="ThinSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Border Height="4" Background="#22FFFFFF" CornerRadius="2"/>
+                            <Track x:Name="PART_Track">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Width="12" Height="12" Fill="{StaticResource AccentOrange}"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Opacity="0" Background="Transparent" BorderThickness="0"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Opacity="0" Background="Transparent" BorderThickness="0"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== КРУГЛЫЕ ИКОНКИ-КНОПКИ (чёткие при любом размере) ===================== -->
+        <!-- Подложка — Ellipse, поэтому кнопка всегда идеальный круг, какой бы размер ей ни задали -->
+        <Style x:Key="RoundIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Ellipse x:Name="Bg" Fill="{TemplateBinding Background}"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Fill" Value="#14FFFFFF"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== ЭКРАН ТРЕКЛИСТА АЛЬБОМА: ×1.3 В ПОЛНОМ ЭКРАНЕ ===================== -->
+        <!-- Все размеры меняются настоящими значениями (а не трансформацией) — текст остаётся чётким -->
+        <Style x:Key="AlbumBackButtonStyle" TargetType="Button" BasedOn="{StaticResource RoundIconButtonStyle}">
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="Width" Value="44"/>
+                    <Setter Property="Height" Value="44"/>
+                    <Setter Property="FontSize" Value="22"/>
+                    <Setter Property="Margin" Value="0,0,0,21"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumHeaderStyle" TargetType="Grid">
+            <Setter Property="Margin" Value="0,0,0,20"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="Margin" Value="0,0,0,26"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumCoverStyle" TargetType="Border">
+            <Setter Property="Width" Value="85"/>
+            <Setter Property="Height" Value="85"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="Width" Value="110"/>
+                    <Setter Property="Height" Value="110"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumCoverGlyphStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="FontSize" Value="34"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumHeaderTextStyle" TargetType="StackPanel">
+            <Setter Property="Margin" Value="20,0,0,4"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="Margin" Value="26,0,0,5"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="FontSize" Value="34"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumArtistStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="FontSize" Value="18"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Список треков альбома: размер шрифта строк и высота строки (глобальный стиль ListBoxItem
+             не трогаем — он же используется в основном списке треков, который увеличивать не нужно) -->
+        <Style x:Key="AlbumTrackListStyle" TargetType="ListBox">
+            <Setter Property="FontSize" Value="12"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="FontSize" Value="16"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Основной список: подсветка играющего трека привязана к Track.IsCurrent, а не к выделению ListBox —
+             она не пропадает после поиска, сортировки и "Хаоса" -->
+        <Style x:Key="SongsTrackItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"/>
+
+        <!-- Ряд сетки альбомов: без подсветки и выделения, просто контейнер для 6 карточек -->
+        <Style x:Key="AlbumRowItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Номер трека в треклисте альбома: выровнен по правому краю (точки стоят в одну линию),
+             узкая колонка — название не отодвигается далеко -->
+        <Style x:Key="AlbumTrackNumberStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextGrayDim}"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="MinWidth" Value="26"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasTrackNumber}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="MinWidth" Value="34"/>
+                    <Setter Property="Margin" Value="0,0,10,0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AlbumTrackItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <!-- Подсветка играющего трека — DataTrigger на Track.IsCurrent в шаблоне ListBoxItem (см. глобальный стиль) -->
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="Height" Value="62"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ===================== ПЛЕЙЛИСТЫ ===================== -->
+
+        <!-- Первая карточка сетки плейлистов: тот же размер и подпись, что у альбомов, но вместо обложки — огромный плюс.
+             Подпись стоит на месте названия, шрифтом "исполнителя" (12, серый). -->
+        <Style x:Key="AddPlaylistCardStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                CornerRadius="{StaticResource RadiusMedium}"
+                                Padding="8,8,8,10">
+                            <StackPanel>
+                                <controls:SquareGrid>
+                                    <Border CornerRadius="{StaticResource RadiusSmall}" Background="#FF2A2A2A">
+                                        <TextBlock x:Name="Plus"
+                                                   Text="&#xE710;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="64"
+                                                   Foreground="#FF5A5A5A"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </controls:SquareGrid>
+                                <TextBlock Text="добавить плейлист"
+                                           Foreground="{StaticResource TextGray}" FontSize="12"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                                <Setter TargetName="Plus" Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Обложка в шапке плейлиста: в режиме редактора — кнопка выбора файла (плюс, пока обложки нет) -->
+        <Style x:Key="PlaylistCoverButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent"/>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsEnabled" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#26FFFFFF"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Значок на обложке плейлиста: нота, если обложки нет; в редакторе — большой плюс -->
+        <Style x:Key="PlaylistCoverGlyphStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="Text" Value="&#xE8D6;"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="Foreground" Value="#FF4A4A4A"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Playlists.SelectedPlaylist.Cover}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Playlists.SelectedPlaylist.Cover}" Value="{x:Null}"/>
+                        <Condition Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="FontSize" Value="34"/>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Playlists.SelectedPlaylist.Cover}" Value="{x:Null}"/>
+                        <Condition Binding="{Binding Playlists.IsEditing}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Text" Value="&#xE710;"/>
+                    <Setter Property="FontSize" Value="44"/>
+                    <Setter Property="Foreground" Value="#FF8A8A8A"/>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Playlists.SelectedPlaylist.Cover}" Value="{x:Null}"/>
+                        <Condition Binding="{Binding Playlists.IsEditing}" Value="True"/>
+                        <Condition Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="FontSize" Value="58"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Название плейлиста в шапке: те же размеры, что у названия альбома (26 / 34 в полном экране) -->
+        <Style x:Key="PlaylistTitleEditStyle" TargetType="controls:InlineEditText">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="MinWidth" Value="260"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="FontSize" Value="34"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Подсказка "F2 — обложка из первого трека": кликабельна, чтобы работало и без клавиатуры -->
+        <Style x:Key="PlaylistHintButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource TextGrayDim}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                            <Border BorderBrush="{TemplateBinding Foreground}"
+                                    BorderThickness="1"
+                                    CornerRadius="5"
+                                    Padding="6,1"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="F2" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Зелёная строка "выбери трек": та же полоска, что у трека в списке, но подсвечена зелёным
+             (у играющего трека — оранжевое свечение: фон-подсветка + тонкая рамка) -->
+        <Style x:Key="PlaylistAddRowItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{StaticResource AccentGreenLight}"
+                                BorderBrush="{StaticResource AccentGreen}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusSmall}"
+                                Margin="8,2,8,2">
+                            <ContentPresenter VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentGreenHover}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                    <Setter Property="Height" Value="62"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Кнопка внутри зелёной строки: занимает всю строку, чтобы кликался весь прямоугольник -->
+        <Style x:Key="PlaylistAddRowButtonStyle" TargetType="Button">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="12,0">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== РЯД ПЛИТОК (сетка альбомов и плейлистов) ===================== -->
+        <!-- Ячейка ряда: без фокуса и без собственной раскладки содержимого — карточка тянется на всю ячейку -->
+        <Style x:Key="TileSlotStyle" TargetType="ContentControl">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        </Style>
+
+        <!-- Ряд ровно из 6 ячеек (данные приходят из TileRows.Build — недостающие ячейки в последнем ряду null).
+             Какую карточку рисовать, решает тип содержимого (DataTemplate с DataType в ресурсах самого списка). -->
+        <DataTemplate x:Key="TileRowTemplate">
+            <UniformGrid Columns="6" Rows="1">
+                <ContentControl Style="{StaticResource TileSlotStyle}" Content="{Binding [0]}"/>
+                <ContentControl Style="{StaticResource TileSlotStyle}" Content="{Binding [1]}"/>
+                <ContentControl Style="{StaticResource TileSlotStyle}" Content="{Binding [2]}"/>
+                <ContentControl Style="{StaticResource TileSlotStyle}" Content="{Binding [3]}"/>
+                <ContentControl Style="{StaticResource TileSlotStyle}" Content="{Binding [4]}"/>
+                <ContentControl Style="{StaticResource TileSlotStyle}" Content="{Binding [5]}"/>
+            </UniformGrid>
+        </DataTemplate>
+
+
+        <!-- ===================== ТРАНСПОРТ: КНОПКИ «ПРЕДЫДУЩИЙ / СЛЕДУЮЩИЙ» ===================== -->
+        <!-- Старый вид (значки Segoe MDL2, серые, оранжевые при наведении), только крупнее и с лёгким «нажатием»:
+             без подложки-круга, значок чуть увеличивается под курсором и сжимается при нажатии. -->
+        <Style x:Key="TransportSkipButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#FFD0D0D0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="19"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="Root" Background="Transparent" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+                                <Setter TargetName="Root" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.12" ScaleY="1.12"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.92" ScaleY="0.92"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.35"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== ТРАНСПОРТ: ГЛАВНАЯ КНОПКА PLAY / PAUSE ===================== -->
+        <!-- Без круга: только значок — жирный закруглённый треугольник или две палочки (меняются по IsPlaying), оранжевый. -->
+        <Style x:Key="TransportPlayButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="Root" Background="Transparent" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+                            <Viewbox Margin="7">
+                                <Canvas Width="24" Height="24">
+                                    <!-- Play: жирный треугольник с мягкими углами -->
+                                    <Path x:Name="PlayIcon"
+                                          Data="M6.6,4.2 L20,12 L6.6,19.8 Z"
+                                          Fill="{TemplateBinding Foreground}"
+                                          Stroke="{TemplateBinding Foreground}"
+                                          StrokeThickness="2.4"
+                                          StrokeLineJoin="Round"/>
+                                    <!-- Pause: две жирные палочки с круглыми концами -->
+                                    <Path x:Name="PauseIcon"
+                                          Data="M7.6,4.8 L7.6,19.2 M16.4,4.8 L16.4,19.2"
+                                          Stroke="{TemplateBinding Foreground}"
+                                          StrokeThickness="4.6"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Visibility="Collapsed"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                <Setter TargetName="PlayIcon" Property="Visibility" Value="Collapsed"/>
+                                <Setter TargetName="PauseIcon" Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#FFFF8A4C"/>
+                                <Setter TargetName="Root" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.12" ScaleY="1.12"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.92" ScaleY="0.92"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===================== ПОЛЗУНОК КАК В ПРОФЕССИОНАЛЬНЫХ ПЛЕЕРАХ ===================== -->
+        <!-- Тонкая дорожка, пройденная часть — градиент акцентного цвета, белый бегунок появляется при наведении
+             и во время перетаскивания. Область нажатия выше самой дорожки — попасть легко. -->
+        <Style x:Key="ProSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Background="Transparent">
+                            <Border x:Name="Rail" Height="5" CornerRadius="2.5" Background="#2EFFFFFF" VerticalAlignment="Center"/>
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Focusable="False" IsTabStop="False" Cursor="Hand">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Grid Background="Transparent">
+                                                    <Border Height="5" CornerRadius="2.5" VerticalAlignment="Center">
+                                                        <Border.Background>
+                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                <GradientStop Color="#FFFF9A58" Offset="0"/>
+                                                                <GradientStop Color="#FFE86C2C" Offset="1"/>
+                                                            </LinearGradientBrush>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Focusable="False" IsTabStop="False" Cursor="Hand">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Grid Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb x:Name="Thumb" Width="16" Height="16" Focusable="False" Opacity="0" Cursor="Hand">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="White" Stroke="#FFE86C2C" StrokeThickness="2.5">
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect Color="Black" BlurRadius="6" ShadowDepth="1" Opacity="0.55"/>
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Thumb" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseCaptureWithin" Value="True">
+                                <Setter TargetName="Thumb" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Время по краям ползунка: цифры одинаковой ширины, чтобы надпись не «дрожала» при смене секунд -->
+        <Style x:Key="TransportTimeTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MinWidth" Value="38"/>
+            <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+        </Style>
+
+        <!-- ===================== КАРТОЧКА «ОСТАЛЬНЫЕ ПЕСНИ» (обложки стопкой) ===================== -->
+                <Style x:Key="StackedAlbumCardStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="Transparent"
+                                CornerRadius="{StaticResource RadiusMedium}"
+                                Padding="8,8,8,10">
+                            <StackPanel>
+                                <!-- Обложка занимает всю ширину карточки и остаётся квадратной
+                                     (высота = собственная ширина), подписи ниже ровно под ней -->
+                                <controls:SquareGrid>
+                                    <!-- Обложки стопкой: у каждой из трёх «карт» свой слой сетки 5x5 (11% + 11% + 56% + 11% + 11%).
+                                         Передняя — снизу слева, средняя и задняя сдвинуты вверх-вправо на 11%, поэтому из-под передней
+                                         выглядывают края остальных, а задние притемнены для глубины. -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="11*"/>
+                                            <ColumnDefinition Width="11*"/>
+                                            <ColumnDefinition Width="56*"/>
+                                            <ColumnDefinition Width="11*"/>
+                                            <ColumnDefinition Width="11*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="11*"/>
+                                            <RowDefinition Height="11*"/>
+                                            <RowDefinition Height="56*"/>
+                                            <RowDefinition Height="11*"/>
+                                            <RowDefinition Height="11*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Задняя -->
+                                        <Border Grid.Column="2" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
+                                                CornerRadius="8" ClipToBounds="True"
+                                                BorderBrush="#26FFFFFF" BorderThickness="1">
+                                            <Grid>
+                                                <Border Background="#FF262626"/>
+                                                <Image Source="{Binding StackBack}" Stretch="UniformToFill"/>
+                                                <Border Background="#A6000000"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Средняя -->
+                                        <Border Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="1" Grid.RowSpan="3"
+                                                CornerRadius="8" ClipToBounds="True"
+                                                BorderBrush="#2EFFFFFF" BorderThickness="1">
+                                            <Grid>
+                                                <Border Background="#FF2A2A2A"/>
+                                                <Image Source="{Binding StackMiddle}" Stretch="UniformToFill"/>
+                                                <Border Background="#66000000"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Передняя -->
+                                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" Grid.RowSpan="3"
+                                                CornerRadius="8" ClipToBounds="True"
+                                                BorderBrush="#38FFFFFF" BorderThickness="1">
+                                            <Grid>
+                                                <Border Background="#FF2E2E2E"/>
+                                                <Image Source="{Binding StackFront}" Stretch="UniformToFill"/>
+                                                <TextBlock Text="&#xE8D6;"
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="38"
+                                                           Foreground="#FF4A4A4A"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Visibility="{Binding StackFront, Converter={StaticResource NullToVisibility}}"/>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Круглая кнопка Play/Pause — появляется в углу обложки при наведении -->
+                                    <Button x:Name="PlayOverlay"
+                                            Width="34" Height="34"
+                                            Padding="0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="10"
+                                            Cursor="Hand"
+                                            BorderThickness="0"
+                                            Opacity="0"
+                                            Command="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border CornerRadius="17" Background="{StaticResource AccentOrange}">
+                                                    <TextBlock Text="{Binding PlayPauseGlyph}"
+                                                               FontFamily="Segoe MDL2 Assets"
+                                                               FontSize="12"
+                                                               Foreground="Black"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </controls:SquareGrid>
+
+                                <TextBlock Text="{Binding Title}"
+                                           Foreground="White" FontSize="14" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,8,0,0"/>
+                                <!-- Пустой исполнитель (у плейлистов) — подпись скрыта, карточка остаётся той же -->
+                                <TextBlock Text="{Binding Artist}"
+                                           Foreground="{StaticResource TextGray}" FontSize="12"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,1,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Artist}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                                <Setter TargetName="PlayOverlay" Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <views:PlaylistRowStyleSelector x:Key="PlaylistRowStyleSelector"
+                                        TrackStyle="{StaticResource AlbumTrackItemStyle}"
+                                        AddRowStyle="{StaticResource PlaylistAddRowItemStyle}"/>
+
+    </Window.Resources>
+
+    <!-- ===================== ОСНОВНОЙ КОНТЕЙНЕР ===================== -->
+    <Border Background="Black" CornerRadius="{StaticResource RadiusLarge}">
+        <Grid>
+
+            <!-- ОВЕРЛЕЙ ПОД ПОПАПАМИ -->
+            <Border x:Name="Overlay"
+                    Background="{StaticResource OverlayBg}"
+                    Effect="{StaticResource MainBlur}"
+                    Opacity="0"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False"
+                    CornerRadius="{StaticResource RadiusLarge}"/>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition>
+                        <ColumnDefinition.Style>
+                            <Style TargetType="ColumnDefinition">
+                                <Setter Property="Width" Value="250"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WindowState, ElementName=RootWindow}" Value="Maximized">
+                                        <Setter Property="Width" Value="300"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ColumnDefinition.Style>
+                    </ColumnDefinition>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- ===================== ЛЕВАЯ ПАНЕЛЬ ===================== -->
+                <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource SidebarBg}" CornerRadius="0,20,20,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Margin="0,20,0,0">
+                            <TextBlock Text="MyPlayer"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource AccentOrange}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,10,0,26"/>
+
+                            <TextBox Style="{StaticResource SearchTextBoxStyle}"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="Поиск по названию или исполнителю"
+                                     Width="210"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,0,0,22"/>
+
+                            <!-- Одна кнопка, как раньше: по клику выпадает выбор «песни» / «папка» -->
+                            <Button x:Name="AddTracksButton"
+                                    Style="{StaticResource SidebarButtonStyle}"
+                                    Tag="&#xE8FD;"
+                                    Content="Добавить треки"
+                                    Click="AddTracksButton_Click"/>
+
+                            <Popup x:Name="AddTracksPopup"
+                                   PlacementTarget="{Binding ElementName=AddTracksButton}"
+                                   Placement="Bottom"
+                                   HorizontalOffset="14"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True">
+                                <Border Background="{StaticResource PanelBg}"
+                                        CornerRadius="{StaticResource RadiusMedium}"
+                                        Padding="6" Width="210"
+                                        BorderBrush="{StaticResource BorderSoft}"
+                                        BorderThickness="1"
+                                        RenderTransformOrigin="0.5,0">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform/>
+                                    </Border.RenderTransform>
+                                    <Border.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard Storyboard="{StaticResource PopupFadeIn}"/>
+                                        </EventTrigger>
+                                    </Border.Triggers>
+                                    <StackPanel>
+                                        <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                Content="Выбрать песни…"
+                                                Command="{Binding OpenFilesCommand}"
+                                                Click="AddTracksItem_Click"/>
+                                        <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                Content="Выбрать папку…"
+                                                Command="{Binding OpenFolderCommand}"
+                                                Click="AddTracksItem_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+
+                            <Button Style="{StaticResource SidebarButtonStyle}"
+                                    Tag="&#xE768;"
+                                    Content="Главный плейлист"
+                                    behaviors:NavButton.IsActive="{Binding CurrentScreen, Converter={StaticResource EnumInSet}, ConverterParameter='Songs'}"
+                                    Command="{Binding ShowSongsCommand}"
+                                    Margin="0,4,0,0"/>
+
+                            <Rectangle Height="1" Fill="{StaticResource BorderSoft}" Margin="14,20,14,20"/>
+
+                            <Button Style="{StaticResource SidebarButtonStyle}"
+                                    Tag="&#xE7F4;"
+                                    Content="Альбомы"
+                                    behaviors:NavButton.IsActive="{Binding CurrentScreen, Converter={StaticResource EnumInSet}, ConverterParameter='AlbumsGrid,AlbumDetail'}"
+                                    Command="{Binding ShowAlbumsCommand}"/>
+
+                            <Button Style="{StaticResource SidebarButtonStyle}"
+                                    Tag="&#xE710;"
+                                    Content="Плей-листы"
+                                    behaviors:NavButton.IsActive="{Binding CurrentScreen, Converter={StaticResource EnumInSet}, ConverterParameter='PlaylistsGrid,PlaylistDetail,PlaylistPicker'}"
+                                    Command="{Binding Playlists.ShowPlaylistsCommand}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2" Margin="0,0,0,20">
+                            <Button Style="{StaticResource SidebarButtonStyle}"
+                                    Tag="&#xE713;"
+                                    Content="Настройки"
+                                    Click="SettingsButton_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ===================== ОСНОВНАЯ ПАНЕЛЬ ===================== -->
+                <Border Grid.Row="0" Grid.Column="1" Background="{StaticResource MainBg}" CornerRadius="20,0,0,0">
+                    <Grid Margin="35,25,35,15">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="{Binding ScreenTitle}"
+                                   FontSize="30"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Margin="0,30,0,0"
+                                   Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter='Songs,AlbumsGrid,PlaylistsGrid'}"/>
+
+                        <!-- Статус фоновой загрузки папки -->
+                        <TextBlock Grid.Row="0"
+                                   Text="{Binding LoadStatusText}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextGrayDim}"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Bottom"
+                                   Margin="0,0,0,8"
+                                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+
+                        <!-- Панель сортировки + Хаос + Настройки (нужна только для экрана "Список треков") -->
+                        <Grid Grid.Row="1" Margin="0,20,0,22"
+                              Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=Songs}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Сортировка -->
+                            <Border Grid.Column="0" Background="{StaticResource PanelBg}" CornerRadius="{StaticResource RadiusPill}" Height="34">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="сортировка"
+                                               Foreground="{StaticResource TextGray}"
+                                               VerticalAlignment="Center"
+                                               FontSize="12"
+                                               Margin="18,0,10,0"
+                                               Opacity="0.85"/>
+
+                                    <Button x:Name="SortButton"
+                                            Grid.Column="1"
+                                            Width="40"
+                                            Height="34"
+                                            Cursor="Hand"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Margin="0,0,4,0"
+                                            Click="TogglePopup_Click"
+                                            Tag="{Binding ElementName=SortPopup}">
+                                        <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="{StaticResource AccentOrange}" FontSize="11"/>
+                                    </Button>
+
+                                    <Popup x:Name="SortPopup"
+                                           PlacementTarget="{Binding ElementName=SortButton}"
+                                           Placement="Bottom"
+                                           StaysOpen="False"
+                                           AllowsTransparency="True"
+                                           Margin="0,6,0,0">
+                                        <Border Background="{StaticResource PanelBg}"
+                                                CornerRadius="{StaticResource RadiusMedium}"
+                                                Padding="6" Width="200"
+                                                BorderBrush="{StaticResource BorderSoft}"
+                                                BorderThickness="1"
+                                                RenderTransformOrigin="0.5,0">
+                                            <Border.RenderTransform>
+                                                <ScaleTransform/>
+                                            </Border.RenderTransform>
+                                            <Border.Triggers>
+                                                <EventTrigger RoutedEvent="Loaded">
+                                                    <BeginStoryboard Storyboard="{StaticResource PopupFadeIn}"/>
+                                                </EventTrigger>
+                                            </Border.Triggers>
+                                            <StackPanel>
+                                                <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                        Content="по названию"
+                                                        Command="{Binding SortByTitleCommand}"
+                                                        Click="ClosePopup_Click" Tag="{Binding ElementName=SortPopup}"/>
+                                                <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                        Content="по длительности"
+                                                        Command="{Binding SortByDurationCommand}"
+                                                        Click="ClosePopup_Click" Tag="{Binding ElementName=SortPopup}"/>
+                                                <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                        Content="по дате добавления"
+                                                        Command="{Binding SortByDateAddedCommand}"
+                                                        Click="ClosePopup_Click" Tag="{Binding ElementName=SortPopup}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+                            </Border>
+
+                            <!-- КНОПКА ХАОС -->
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource ChaosButtonStyle}"
+                                    Content="ХАОС"
+                                    Margin="14,0,0,0"
+                                    Command="{Binding ChaosCommand}"/>
+
+                            <!-- НАСТРОЙКА ХАОСА -->
+                            <Button x:Name="ChaosSettingsButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource IconButtonStyle}"
+                                    Content="&#xE713;"
+                                    Margin="8,0,0,0"
+                                    Click="OpenChaosSettings_Click"/>
+
+                            <Popup x:Name="ChaosSettingsPopup"
+                                   PlacementTarget="{Binding ElementName=ChaosSettingsButton}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True"
+                                   Margin="0,6,0,0"
+                                   Closed="ChaosSettingsPopup_Closed">
+                                <Border Background="{StaticResource PanelBg}"
+                                        CornerRadius="{StaticResource RadiusMedium}"
+                                        Padding="8" Width="260"
+                                        BorderBrush="{StaticResource BorderSoft}"
+                                        BorderThickness="1"
+                                        RenderTransformOrigin="0.5,0">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform/>
+                                    </Border.RenderTransform>
+                                    <Border.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard Storyboard="{StaticResource PopupFadeIn}"/>
+                                        </EventTrigger>
+                                    </Border.Triggers>
+
+                                    <StackPanel x:Name="ChaosMenuRoot">
+
+                                        <!-- Главное меню -->
+                                        <StackPanel x:Name="ChaosMainMenu">
+                                            <TextBlock Text="НАСТРОЙКА ХАОСА"
+                                                       Foreground="{StaticResource AccentOrange}"
+                                                       FontSize="11" FontWeight="Bold"
+                                                       Margin="16,10,0,8"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                    Content="Случайное перемешивание"
+                                                    Command="{Binding SetChaosModeRandomCommand}"
+                                                    Click="ClosePopup_Click" Tag="{Binding ElementName=ChaosSettingsPopup}"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                    Content="Поднять с конца списка"
+                                                    Click="OpenChaosBringUpMenu_Click"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                    Content="Конкретный исполнитель"
+                                                    Click="OpenChaosArtistMenu_Click"/>
+                                        </StackPanel>
+
+                                        <!-- Меню "поднять N треков" -->
+                                        <StackPanel x:Name="ChaosBringUpMenu" Visibility="Collapsed">
+                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                    Content="← Назад"
+                                                    Click="BackToChaosMainMenu_Click"/>
+                                            <TextBlock Text="СКОЛЬКО ТРЕКОВ ПОДНЯТЬ?"
+                                                       Foreground="{StaticResource AccentOrange}"
+                                                       FontSize="11" FontWeight="Bold"
+                                                       Margin="16,10,0,8"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}" Content="3 трека"
+                                                    Click="SetBringUpCount_Click" Tag="3"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}" Content="5 треков"
+                                                    Click="SetBringUpCount_Click" Tag="5"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}" Content="10 треков"
+                                                    Click="SetBringUpCount_Click" Tag="10"/>
+                                        </StackPanel>
+
+                                        <!-- Меню выбора исполнителя -->
+                                        <StackPanel x:Name="ChaosArtistMenu" Visibility="Collapsed">
+                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                    Content="← Назад"
+                                                    Click="BackToChaosMainMenu_Click"/>
+                                            <TextBlock Text="ВЫБЕРИТЕ ИСПОЛНИТЕЛЯ"
+                                                       Foreground="{StaticResource AccentOrange}"
+                                                       FontSize="11" FontWeight="Bold"
+                                                       Margin="16,10,0,8"/>
+                                            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto"
+                                          behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                          behaviors:SmoothScrollBehavior.PixelsPerNotch="90">
+                                                <ItemsControl ItemsSource="{Binding Artists}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                                    Content="{Binding}"
+                                                                    Click="SelectArtist_Click"
+                                                                    Tag="{Binding}"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </StackPanel>
+
+                                        <!-- Меню количества после выбора исполнителя -->
+                                        <StackPanel x:Name="ChaosArtistCountMenu" Visibility="Collapsed">
+                                            <Button Style="{StaticResource MenuItemButtonStyle}"
+                                                    Content="← К списку исполнителей"
+                                                    Click="BackToChaosArtistMenu_Click"/>
+                                            <TextBlock x:Name="SelectedArtistLabel"
+                                                       Foreground="{StaticResource AccentOrange}"
+                                                       FontSize="11" FontWeight="Bold"
+                                                       Margin="16,10,0,8"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}" Content="3 трека"
+                                                    Click="SetArtistCount_Click" Tag="3"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}" Content="5 треков"
+                                                    Click="SetArtistCount_Click" Tag="5"/>
+                                            <Button Style="{StaticResource MenuItemButtonStyle}" Content="10 треков"
+                                                    Click="SetArtistCount_Click" Tag="10"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <!-- ===================== ОСНОВНОЙ КОНТЕНТ: ТРИ ЭКРАНА В ОДНОМ МЕСТЕ ===================== -->
+                        <Grid Grid.Row="2">
+
+                            <!-- ЭКРАН 1: СПИСОК ВСЕХ ТРЕКОВ (как и раньше, просто получил Visibility) -->
+                            <Grid Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=Songs}">
+                                    <!-- Виртуализация: контейнеры строк создаются только для видимых треков
+                                         (ListBox лежит прямо в Grid, без внешнего ScrollViewer — иначе виртуализация отключается) -->
+                                    <ListBox x:Name="SongsListBox"
+                                             ItemsSource="{Binding Tracks}"
+                                             ItemContainerStyle="{StaticResource SongsTrackItemStyle}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             VirtualizingPanel.IsVirtualizing="True"
+                                             VirtualizingPanel.VirtualizationMode="Recycling"
+                                             VirtualizingPanel.ScrollUnit="Pixel"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                         behaviors:SmoothScrollBehavior.PixelsPerNotch="90"
+                                             MouseLeftButtonUp="SongsListBox_MouseLeftButtonUp">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="50"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="200"/>
+                                                        <ColumnDefinition Width="70"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Number, StringFormat=00}"
+                                                               Foreground="{StaticResource TextGrayDim}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                                               Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Artist}"
+                                                               Foreground="{StaticResource TextGray}" TextTrimming="CharacterEllipsis"
+                                                               Margin="0,0,16,0"/>
+                                                    <TextBlock Grid.Column="3" Text="{Binding DurationText}"
+                                                               Foreground="{StaticResource TextGray}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                <!-- Пустое состояние -->
+                                <TextBlock Text="Список пуст — нажмите «Добавить треки» слева"
+                                           Foreground="{StaticResource TextGrayDim}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="14">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Tracks.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- ЭКРАН 2: СЕТКА АЛЬБОМОВ — 6 колонок, стиль Windows 10 Media Player.
+                                 Виртуализированный список РЯДОВ (по 6 карточек): на экране строятся только видимые ряды. -->
+                            <Grid Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=AlbumsGrid}"
+                                  Margin="0,50,0,0">
+                                <!-- Ряд = 6 фиксированных ячеек (TileRowTemplate), контейнеры рядов переиспользуются (Recycling):
+                                     при прокрутке дерево элементов не создаётся заново, а только получает новые данные. -->
+                                <ListBox ItemsSource="{Binding AlbumRows}"
+                                         ItemTemplate="{StaticResource TileRowTemplate}"
+                                         ItemContainerStyle="{StaticResource AlbumRowItemStyle}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Focusable="False"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         VirtualizingPanel.ScrollUnit="Pixel"
+                                         VirtualizingPanel.CacheLength="1"
+                                         VirtualizingPanel.CacheLengthUnit="Item"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                         behaviors:SmoothScrollBehavior.PixelsPerNotch="200">
+                                    <ListBox.Resources>
+                                        <DataTemplate DataType="{x:Type models:Album}">
+                                            <Button Style="{StaticResource AlbumCardStyle}"
+                                                    Tag="{Binding DataContext.PlayAlbumCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    Command="{Binding DataContext.OpenAlbumCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </DataTemplate>
+                                        <!-- «Остальные песни» — более специфичный тип, поэтому берётся этот шаблон (обложки стопкой) -->
+                                        <DataTemplate DataType="{x:Type models:OtherSongsAlbum}">
+                                            <Button Style="{StaticResource StackedAlbumCardStyle}"
+                                                    Tag="{Binding DataContext.PlayAlbumCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    Command="{Binding DataContext.OpenAlbumCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </DataTemplate>
+                                    </ListBox.Resources>
+                                </ListBox>
+
+                                <!-- Пустое состояние -->
+                                <TextBlock Text="Альбомы появятся здесь после добавления треков"
+                                           Foreground="{StaticResource TextGrayDim}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="14">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AlbumRows.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- ЭКРАН 3: ДЕТАЛИ АЛЬБОМА — крупная обложка + полный список треков -->
+                            <Grid Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=AlbumDetail}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Стрелка назад — отдельно, в самом верху, не привязана к высоте обложки -->
+                                <Button Grid.Row="0"
+                                        Style="{StaticResource AlbumBackButtonStyle}"
+                                        Content="&#xE72B;"
+                                        Command="{Binding BackToAlbumsCommand}"
+                                        HorizontalAlignment="Left"/>
+
+                                <Grid Grid.Row="1" Style="{StaticResource AlbumHeaderStyle}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource AlbumCoverStyle}"
+                                            CornerRadius="{StaticResource RadiusSmall}" ClipToBounds="True">
+                                        <Grid>
+                                            <Border Background="#FF2A2A2A"/>
+                                            <Image Source="{Binding SelectedAlbum.Cover}" Stretch="UniformToFill"/>
+                                            <TextBlock Text="&#xE8D6;"
+                                                       Style="{StaticResource AlbumCoverGlyphStyle}"
+                                                       Foreground="#FF4A4A4A"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="{Binding SelectedAlbum.Cover, Converter={StaticResource NullToVisibility}}"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Bottom" Style="{StaticResource AlbumHeaderTextStyle}">
+                                        <TextBlock Text="{Binding SelectedAlbum.Title}"
+                                                   Style="{StaticResource AlbumTitleStyle}"
+                                                   FontWeight="Bold" Foreground="White"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding SelectedAlbum.Artist}"
+                                                   Style="{StaticResource AlbumArtistStyle}"
+                                                   Foreground="{StaticResource TextGray}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                    <ListBox x:Name="AlbumTracksListBox"
+                                             Grid.Row="2"
+                                             Style="{StaticResource AlbumTrackListStyle}"
+                                             ItemContainerStyle="{StaticResource AlbumTrackItemStyle}"
+                                             ItemsSource="{Binding SelectedAlbum.Tracks}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             VirtualizingPanel.IsVirtualizing="True"
+                                             VirtualizingPanel.VirtualizationMode="Recycling"
+                                             VirtualizingPanel.ScrollUnit="Pixel"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                         behaviors:SmoothScrollBehavior.PixelsPerNotch="90"
+                                             MouseLeftButtonUp="AlbumTracksListBox_MouseLeftButtonUp">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="70"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Номер трека из тега ("1.", "2." …). Если в файле номера нет —
+                                                         колонка схлопывается, и название стоит первым -->
+                                                    <TextBlock Grid.Column="0" Text="{Binding TrackNumberText}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource AlbumTrackNumberStyle}">
+                                                                <Style.Triggers>
+                                                                    <!-- Пустой исполнитель у выбранного «альбома» = «Остальные песни»: номера из разных альбомов бессмысленны -->
+                                                                    <DataTrigger Binding="{Binding DataContext.SelectedAlbum.Artist, ElementName=RootWindow}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <Grid Grid.Column="1">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Title}"
+                                                                   Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                                        <!-- Исполнитель в строке — только в «Остальных песнях» (у обычного альбома он в шапке) -->
+                                                        <TextBlock Grid.Column="1" Text="{Binding Artist}"
+                                                                   Foreground="{StaticResource TextGrayDim}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxWidth="240" Margin="12,0,12,0">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding DataContext.SelectedAlbum.Artist, ElementName=RootWindow}" Value="">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                    <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                                                               Foreground="{StaticResource TextGray}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                            </Grid>
+
+                            <!-- ЭКРАН 4: СЕТКА ПЛЕЙЛИСТОВ — те же размеры и карточки, что у альбомов.
+                                 Последней всегда идёт карточка "добавить плейлист". -->
+                            <Grid Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=PlaylistsGrid}"
+                                  Margin="0,50,0,0">
+                                <ListBox ItemsSource="{Binding Playlists.PlaylistRows}"
+                                         ItemTemplate="{StaticResource TileRowTemplate}"
+                                         ItemContainerStyle="{StaticResource AlbumRowItemStyle}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Focusable="False"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         VirtualizingPanel.ScrollUnit="Pixel"
+                                         VirtualizingPanel.CacheLength="1"
+                                         VirtualizingPanel.CacheLengthUnit="Item"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                         behaviors:SmoothScrollBehavior.PixelsPerNotch="200">
+                                    <ListBox.Resources>
+                                        <!-- Готовый плейлист: карточка альбома без подписи исполнителя -->
+                                        <DataTemplate DataType="{x:Type models:Playlist}">
+                                            <Button Style="{StaticResource AlbumCardStyle}"
+                                                    Tag="{Binding DataContext.Playlists.PlayPlaylistCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    Command="{Binding DataContext.Playlists.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type models:AddPlaylistTile}">
+                                            <Button Style="{StaticResource AddPlaylistCardStyle}"
+                                                    Command="{Binding DataContext.Playlists.AddPlaylistCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"/>
+                                        </DataTemplate>
+                                    </ListBox.Resources>
+                                </ListBox>
+                            </Grid>
+
+                            <!-- ЭКРАН 5: ПЛЕЙЛИСТ — копия экрана альбома. В режиме редактора обложку и название можно менять,
+                                 а в конце списка стоит зелёная строка "выбери трек". -->
+                            <Grid Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=PlaylistDetail}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Стрелка назад: в редакторе заодно сохраняет плейлист -->
+                                <Button Grid.Row="0"
+                                        Style="{StaticResource AlbumBackButtonStyle}"
+                                        Content="&#xE72B;"
+                                        Command="{Binding Playlists.BackCommand}"
+                                        HorizontalAlignment="Left"/>
+
+                                <Grid Grid.Row="1" Style="{StaticResource AlbumHeaderStyle}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Обложка: в редакторе клик открывает выбор файла -->
+                                    <Border Grid.Column="0" Style="{StaticResource AlbumCoverStyle}"
+                                            CornerRadius="{StaticResource RadiusSmall}" ClipToBounds="True">
+                                        <Grid>
+                                            <Border Background="#FF2A2A2A"/>
+                                            <Image Source="{Binding Playlists.SelectedPlaylist.Cover}" Stretch="UniformToFill"/>
+                                            <TextBlock Style="{StaticResource PlaylistCoverGlyphStyle}"/>
+                                            <Button Style="{StaticResource PlaylistCoverButtonStyle}"
+                                                    Command="{Binding Playlists.ChooseCoverCommand}"
+                                                    ToolTip="Выбрать обложку из файла"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Исполнителя у плейлиста нет, поэтому название стоит чуть ниже, чем у альбома -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Bottom" Style="{StaticResource AlbumHeaderTextStyle}">
+                                        <Button Style="{StaticResource PlaylistHintButtonStyle}"
+                                                Content="обложка из первого трека"
+                                                Command="{Binding Playlists.UseFirstTrackCoverCommand}"
+                                                ToolTip="Взять обложку у первого добавленного трека (F2)"
+                                                Margin="0,0,0,12"
+                                                Visibility="{Binding Playlists.IsEditing, Converter={StaticResource BoolToVisibility}}"/>
+                                        <controls:InlineEditText Style="{StaticResource PlaylistTitleEditStyle}"
+                                                                 Text="{Binding Playlists.SelectedPlaylist.Title, Mode=TwoWay}"
+                                                                 Placeholder="выберите название"
+                                                                 IsEditable="{Binding Playlists.IsEditing}"
+                                                                 HorizontalAlignment="Left"/>
+                                    </StackPanel>
+
+                                    <!-- Действия: в просмотре — "изменить", в редакторе — "удалить" (для сохранённых) и "Готово" -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="20,0,0,4">
+                                        <Button Style="{StaticResource RoundIconButtonStyle}"
+                                                Content="&#xE74D;"
+                                                ToolTip="Удалить плейлист"
+                                                Margin="0,0,10,0"
+                                                Command="{Binding Playlists.DeletePlaylistCommand}"
+                                                Visibility="{Binding Playlists.ShowDeleteButton, Converter={StaticResource BoolToVisibility}}"/>
+                                        <Button Style="{StaticResource ChaosButtonStyle}"
+                                                Content="Готово"
+                                                Command="{Binding Playlists.DoneCommand}"
+                                                Visibility="{Binding Playlists.IsEditing, Converter={StaticResource BoolToVisibility}}"/>
+                                        <Button Content="&#xE70F;"
+                                                ToolTip="Изменить плейлист"
+                                                Command="{Binding Playlists.EditPlaylistCommand}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource RoundIconButtonStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Playlists.IsEditing}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Список без нумерации. Не Recycling: стиль строки зависит от типа элемента (трек / "выбери трек") -->
+                                <ListBox x:Name="PlaylistTracksListBox"
+                                         Grid.Row="2"
+                                         Style="{StaticResource AlbumTrackListStyle}"
+                                         ItemContainerStyleSelector="{StaticResource PlaylistRowStyleSelector}"
+                                         ItemsSource="{Binding Playlists.EditorItems}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.ScrollUnit="Pixel"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                         behaviors:SmoothScrollBehavior.PixelsPerNotch="90"
+                                         MouseLeftButtonUp="PlaylistTracksListBox_MouseLeftButtonUp">
+                                    <ListBox.Resources>
+                                        <!-- Трек плейлиста: название, исполнитель, длительность (+ крестик в редакторе) -->
+                                        <DataTemplate DataType="{x:Type models:Track}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="200"/>
+                                                    <ColumnDefinition Width="70"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Title}"
+                                                           Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Artist}"
+                                                           Foreground="{StaticResource TextGray}" TextTrimming="CharacterEllipsis"
+                                                           Margin="0,0,16,0"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                                                           Foreground="{StaticResource TextGray}"/>
+                                                <Button Grid.Column="3"
+                                                        Style="{StaticResource RoundIconButtonStyle}"
+                                                        Content="&#xE711;"
+                                                        FontSize="10"
+                                                        Width="26" Height="26"
+                                                        ToolTip="Убрать из плейлиста"
+                                                        Command="{Binding DataContext.Playlists.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}"
+                                                        Visibility="{Binding DataContext.Playlists.IsEditing, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource BoolToVisibility}}"/>
+                                            </Grid>
+                                        </DataTemplate>
+
+                                        <!-- Зелёная строка: квадрат с плюсом и надпись -->
+                                        <DataTemplate DataType="{x:Type models:AddTrackRow}">
+                                            <Button Style="{StaticResource PlaylistAddRowButtonStyle}"
+                                                    Command="{Binding DataContext.Playlists.PickTrackCommand, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Border Width="26" Height="26"
+                                                            CornerRadius="7"
+                                                            BorderBrush="{StaticResource AccentGreen}"
+                                                            BorderThickness="1.4"
+                                                            Background="{StaticResource AccentGreenLight}">
+                                                        <TextBlock Text="&#xE710;"
+                                                                   FontFamily="Segoe MDL2 Assets"
+                                                                   FontSize="12"
+                                                                   Foreground="{StaticResource AccentGreen}"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <TextBlock Text="выбери трек"
+                                                               Foreground="{StaticResource AccentGreen}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="14,0,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ListBox.Resources>
+                                </ListBox>
+                            </Grid>
+
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ===================== ПАНЕЛЬ ПЛЕЕРА (низ) ===================== -->
+                <Border Grid.Row="1" Grid.ColumnSpan="2"
+                        Background="{StaticResource SidebarBg}"
+                        CornerRadius="0,0,20,20"
+                        Padding="0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <!-- Ширина первой колонки всегда равна ширине сайдбара (250 / 300 в полном экране) -->
+                            <ColumnDefinition>
+                                <ColumnDefinition.Style>
+                                    <Style TargetType="ColumnDefinition">
+                                        <Setter Property="Width" Value="250"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding WindowState, ElementName=RootWindow}" Value="Maximized">
+                                                <Setter Property="Width" Value="300"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ColumnDefinition.Style>
+                            </ColumnDefinition>
+                            <ColumnDefinition Width="*"/>
+                            <!-- Правая колонка ровно такой же ширины, как левая: тогда средняя (кнопки + ползунок)
+                                 оказывается строго по центру окна, а не смещена на разницу колонок -->
+                            <ColumnDefinition>
+                                <ColumnDefinition.Style>
+                                    <Style TargetType="ColumnDefinition">
+                                        <Setter Property="Width" Value="250"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding WindowState, ElementName=RootWindow}" Value="Maximized">
+                                                <Setter Property="Width" Value="300"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ColumnDefinition.Style>
+                            </ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Текущий трек — клик открывает полноэкранный плеер -->
+                        <!-- Невидимая область нажатия: по ширине чуть уже сайдбара (отступ 24px с каждой стороны),
+                             по высоте на всю нижнюю панель — над/под надписями остаётся место для ещё одной строки.
+                             Подсвечивается скруглённым прямоугольником только при наведении. -->
+                        <Button Grid.Column="0"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Cursor="Hand"
+                                Command="{Binding ShowNowPlayingCommand}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Bd"
+                                            Background="Transparent"
+                                            CornerRadius="{StaticResource RadiusMedium}"
+                                            Margin="24,8,24,8">
+                                        <ContentPresenter Margin="14,0,14,0" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsMouseOver" Value="True"/>
+                                                <Condition Property="IsEnabled" Value="True"/>
+                                            </MultiTrigger.Conditions>
+                                            <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                                        </MultiTrigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <StackPanel>
+                                <TextBlock Text="{Binding CurrentTrack.Title, FallbackValue='Ничего не играет'}"
+                                           Foreground="White" FontSize="13" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding CurrentTrack.Artist}"
+                                           Foreground="{StaticResource TextGray}" FontSize="12"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Транспорт + прогресс -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,12">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding WindowState, ElementName=RootWindow}" Value="Maximized">
+                                                <Setter Property="LayoutTransform">
+                                                    <Setter.Value>
+                                                        <ScaleTransform ScaleX="1.25" ScaleY="1.25"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <Button Style="{StaticResource TransportSkipButtonStyle}" Content="&#xE892;"
+                                        Command="{Binding PreviousCommand}" Margin="0,0,8,0"
+                                        ToolTip="Предыдущий трек (←)"/>
+                                <Button Style="{StaticResource TransportPlayButtonStyle}"
+                                        Command="{Binding PlayPauseCommand}"
+                                        ToolTip="Играть / пауза (Пробел)"/>
+                                <Button Style="{StaticResource TransportSkipButtonStyle}" Content="&#xE893;"
+                                        Command="{Binding NextCommand}" Margin="8,0,0,0"
+                                        ToolTip="Следующий трек (→)"/>
+                            </StackPanel>
+
+                            <!-- Прогресс: время слева, остаток/длительность справа, ползунок между ними -->
+                            <Grid Width="400" Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="{Binding PositionText}"
+                                           Style="{StaticResource TransportTimeTextStyle}"
+                                           TextAlignment="Left"/>
+
+                                <Slider x:Name="PositionSlider"
+                                        Grid.Column="1"
+                                        Style="{StaticResource ProSliderStyle}"
+                                        Minimum="0"
+                                        Maximum="{Binding DurationSeconds, FallbackValue=1}"
+                                        Value="{Binding PositionSeconds, Mode=TwoWay}"
+                                        IsMoveToPointEnabled="True"
+                                        Thumb.DragStarted="PositionSlider_DragStarted"
+                                        Thumb.DragCompleted="PositionSlider_DragCompleted"
+                                        Margin="10,0"/>
+
+                                <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                                           Style="{StaticResource TransportTimeTextStyle}"
+                                           TextAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Громкость -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,30,0">
+                            <TextBlock FontFamily="Segoe MDL2 Assets"
+                                       Foreground="{StaticResource TextGray}" FontSize="15" Margin="0,0,10,0"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#xE767;"/>
+                                        <Style.Triggers>
+                                            <!-- Громкость 0 — значок «без звука» -->
+                                            <DataTrigger Binding="{Binding Volume}" Value="0">
+                                                <Setter Property="Text" Value="&#xE74F;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Slider Style="{StaticResource ProSliderStyle}"
+                                    Minimum="0" Maximum="1"
+                                    Value="{Binding Volume}"
+                                    Width="120"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ===================== ЭКРАН: ПОЛНОЭКРАННЫЙ ПЛЕЕР (СЕЙЧАС ИГРАЕТ) ===================== -->
+            <!-- Лежит поверх всего окна целиком — сайдбара, контента и нижней мини-панели -->
+            <Border Background="Black"
+                    CornerRadius="{StaticResource RadiusLarge}"
+                    ClipToBounds="True"
+                    Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=NowPlaying}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Стрелка назад — одна, вверху, ничего больше там не висит -->
+                    <Button Grid.Row="0"
+                            Style="{StaticResource IconButtonStyle}"
+                            Content="&#xE72B;"
+                            FontSize="18"
+                            HorizontalAlignment="Left"
+                            Command="{Binding BackFromNowPlayingCommand}"
+                            Margin="40,36,0,0"/>
+
+                    <!-- Строка-распорка: заполняет пустоту, прижимая весь остальной контент к низу -->
+
+                    <!-- Низ: обложка (компактнее) + название/исполнитель, затем прогресс и управление -->
+                    <StackPanel Grid.Row="2" Margin="40,0,40,32">
+
+                        <!-- Блок "обложка + название + исполнитель".
+                             В обычном окне — как раньше; в развёрнутом на весь экран увеличивается
+                             в 1.5 раза (LayoutTransform масштабирует и размеры, и отступы, и шрифты).
+                             Реагирует на WindowState самого окна — ViewModel и code-behind не нужны. -->
+                        <Grid Margin="0,0,0,28">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="LayoutTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                     Value="Maximized">
+                                            <Setter Property="LayoutTransform">
+                                                <Setter.Value>
+                                                    <ScaleTransform ScaleX="1.5" ScaleY="1.5"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <!-- Обложка масштабируется отдельно от текста: блок целиком увеличивается в 1.5 раза,
+                                 а размер обложки в развёрнутом окне подогнан так, чтобы итог был ×1.4 от оконного
+                                 (168 * 1.5 = 252px против 180px в окне). Width/Height заданы через Style,
+                                 потому что локальные значения перебили бы триггер. -->
+                            <Border Grid.Column="0"
+                                    CornerRadius="{StaticResource RadiusMedium}" ClipToBounds="True">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Width" Value="180"/>
+                                        <Setter Property="Height" Value="180"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         Value="Maximized">
+                                                <Setter Property="Width" Value="168"/>
+                                                <Setter Property="Height" Value="168"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Border Background="#FF2A2A2A"/>
+                                    <Image Source="{Binding CurrentTrack.Cover}" Stretch="UniformToFill"/>
+                                    <TextBlock Text="&#xE8D6;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="56"
+                                               Foreground="#FF4A4A4A"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Visibility="{Binding CurrentTrack.Cover, Converter={StaticResource NullToVisibility}}"/>
+                                </Grid>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Bottom" Margin="28,0,0,4">
+                                <TextBlock Text="{Binding CurrentTrack.Title}"
+                                           FontSize="26" FontWeight="Bold" Foreground="White"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding CurrentTrack.Artist}"
+                                           FontSize="15" Foreground="{StaticResource TextGray}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{Binding PositionText}"
+                                       Foreground="{StaticResource TextGray}" FontSize="12"
+                                       VerticalAlignment="Center"/>
+
+                            <Slider Grid.Column="1"
+                                    Style="{StaticResource ProSliderStyle}"
+                                    Minimum="0"
+                                    Maximum="{Binding DurationSeconds, FallbackValue=1}"
+                                    Value="{Binding PositionSeconds, Mode=TwoWay}"
+                                    IsMoveToPointEnabled="True"
+                                    Thumb.DragStarted="PositionSlider_DragStarted"
+                                    Thumb.DragCompleted="PositionSlider_DragCompleted"
+                                    Margin="16,0"/>
+
+                            <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                                       Foreground="{StaticResource TextGray}" FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Style="{StaticResource TransportSkipButtonStyle}" Content="&#xE892;"
+                                    Width="48" Height="48" FontSize="23"
+                                    Command="{Binding PreviousCommand}" Margin="0,0,12,0"
+                                    ToolTip="Предыдущий трек (←)"/>
+                            <Button Style="{StaticResource TransportPlayButtonStyle}"
+                                    Width="52" Height="52"
+                                    Command="{Binding PlayPauseCommand}"
+                                    ToolTip="Играть / пауза (Пробел)"/>
+                            <Button Style="{StaticResource TransportSkipButtonStyle}" Content="&#xE893;"
+                                    Width="48" Height="48" FontSize="23"
+                                    Command="{Binding NextCommand}" Margin="12,0,0,0"
+                                    ToolTip="Следующий трек (→)"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===================== ЭКРАН: "ВЫБЕРИТЕ КОМПОЗИЦИЮ" (выбор трека для плейлиста) ===================== -->
+            <!-- Перекрывает всё окно (как полноэкранный плеер): без сайдбара и нижней панели, только заголовок и список -->
+            <Border Background="Black"
+                    CornerRadius="{StaticResource RadiusLarge}"
+                    ClipToBounds="True"
+                    Visibility="{Binding CurrentScreen, Converter={StaticResource EnumToVisibility}, ConverterParameter=PlaylistPicker}">
+                <Grid Margin="35,36,35,25">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+                        <Button Style="{StaticResource IconButtonStyle}"
+                                Content="&#xE72B;"
+                                FontSize="18"
+                                VerticalAlignment="Center"
+                                Command="{Binding Playlists.BackFromPickerCommand}"
+                                ToolTip="Назад в редактор"/>
+                        <TextBlock Text="Выберите композицию"
+                                   FontSize="30"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"
+                                   Margin="14,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Список такой же, как на главном плейлисте (тот же стиль строки, виртуализация, подсветка играющего) -->
+                    <ListBox x:Name="PickerListBox"
+                             Grid.Row="1"
+                             ItemsSource="{Binding Playlists.PickerTracks}"
+                             ItemContainerStyle="{StaticResource SongsTrackItemStyle}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             behaviors:SmoothScrollBehavior.IsEnabled="True"
+                                         behaviors:SmoothScrollBehavior.PixelsPerNotch="90"
+                             MouseLeftButtonUp="PickerListBox_MouseLeftButtonUp">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Title}"
+                                               Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Artist}"
+                                               Foreground="{StaticResource TextGray}" TextTrimming="CharacterEllipsis"
+                                               Margin="0,0,16,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                                               Foreground="{StaticResource TextGray}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Пустое состояние: все треки уже в плейлисте или библиотека пуста -->
+                    <TextBlock Grid.Row="1"
+                               Text="Больше нет треков, которые можно добавить"
+                               Foreground="{StaticResource TextGrayDim}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="14">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Playlists.PickerTracks.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <!-- ===================== КАСТОМНАЯ ШАПКА ОКНА ===================== -->
+            <!-- Последний ребёнок корневого Grid — лежит поверх всего, включая полноэкранный плеер -->
+            <controls:WindowTitleBar/>
+        </Grid>
+    </Border>
+</Window>

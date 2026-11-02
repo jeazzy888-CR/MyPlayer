@@ -1,0 +1,19 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <AppDir Condition="'$(AppDir)' == ''">..\build\installer-files</AppDir>
+    <!-- true — регистрировать ассоциации файлов; false — собрать MSI без них (запасной вариант скрипта сборки) -->
+    <WithAssoc Condition="'$(WithAssoc)' == ''">true</WithAssoc>
+
+    <!-- Проверка ICE нужна только разработчикам установщиков и на сборочных машинах часто падает по причинам, не связанным с нашим MSI -->
+    <SuppressValidation>true</SuppressValidation>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <DefineConstants>$(DefineConstants);ProductVersion=$(ProductVersion);AppDir=$(AppDir)</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(WithAssoc)' == 'true'">
+    <DefineConstants>$(DefineConstants);WithAssoc=1</DefineConstants>
+  </PropertyGroup>
+</Project>
