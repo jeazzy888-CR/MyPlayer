@@ -1,4 +1,5 @@
 <Window x:Class="MyPlayer_NET9.Views.MainWindow"
+        Icon="pack://application:,,,/Assets/MyPlayer.ico"
         x:Name="RootWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

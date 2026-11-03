@@ -6,6 +6,11 @@
     <MajorUpgrade DowngradeErrorMessage="Установлена более новая версия MyPlayer." />
     <MediaTemplate EmbedCab="yes" />
 
+    <?ifdef IconPath?>
+    <Icon Id="MyPlayer.ico" SourceFile="$(IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="MyPlayer.ico" />
+    <?endif?>
+
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="MyPlayer" />
     </StandardDirectory>

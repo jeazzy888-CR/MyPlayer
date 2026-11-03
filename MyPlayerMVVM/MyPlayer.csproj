@@ -10,10 +10,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>MyPlayer_NET9</RootNamespace>
     <AssemblyName>MyPlayer</AssemblyName>
+    <!-- Иконка файла MyPlayer.exe (проводник, ярлыки, панель задач) -->
+    <ApplicationIcon>Assets\MyPlayer.ico</ApplicationIcon>
     <LangVersion>latest</LangVersion>
 
     <!-- Версия релиза: меняется только здесь (скрипт сборки, MSI и GitHub берут её отсюда) -->
-    <Version>1.4.5</Version>
+    <Version>1.4.6</Version>
     <AssemblyTitle>MyPlayer</AssemblyTitle>
     <Product>MyPlayer</Product>
     <Company>MyPlayer</Company>
@@ -22,6 +24,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Иконка окна (Window.Icon): должна быть вшита в программу как ресурс -->
+    <Resource Include="Assets\MyPlayer.ico" />
     <!-- Чтение ID3-тегов mp3 (название, исполнитель, реальная длительность) -->
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>

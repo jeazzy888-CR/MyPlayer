@@ -13,6 +13,10 @@
 
     <DefineConstants>$(DefineConstants);ProductVersion=$(ProductVersion);AppDir=$(AppDir)</DefineConstants>
   </PropertyGroup>
+  <!-- Иконка для «Программы и компоненты»; если файла нет — установщик собирается без неё -->
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)..\MyPlayerMVVM\Assets\MyPlayer.ico')">
+    <DefineConstants>$(DefineConstants);IconPath=$(MSBuildThisFileDirectory)..\MyPlayerMVVM\Assets\MyPlayer.ico</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(WithAssoc)' == 'true'">
     <DefineConstants>$(DefineConstants);WithAssoc=1</DefineConstants>
   </PropertyGroup>
