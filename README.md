@@ -62,7 +62,7 @@
 Нужны Visual Studio 2022 (компонент «Разработка классических приложений .NET») или .NET SDK 8.
 
 ```powershell
-git clone <адрес репозитория>
+git clone https://github.com/jeazzy888-CR/MyPlayer.git
 cd MyPlayer
 dotnet run --project MyPlayerMVVM\MyPlayer.csproj
 ```
